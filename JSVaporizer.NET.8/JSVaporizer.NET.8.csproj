@@ -1,0 +1,71 @@
+﻿<Project Sdk="Microsoft.NET.Sdk.WebAssembly">
+
+	<PropertyGroup>
+		<TargetFramework>net8.0</TargetFramework>
+		<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+		<Nullable>enable</Nullable>
+		<OutputType>Library</OutputType>
+		<IlcDisableReflection>false</IlcDisableReflection>
+
+		<!--<IsPackable>true</IsPackable>
+		
+		
+		<GeneratePackageOnBuild>True</GeneratePackageOnBuild>
+		<Title>JS Vaporizer</Title>
+		<Version>0.0.0.1</Version>
+		<PackageProjectUrl></PackageProjectUrl>
+		<Description>JSVaporizer is a lightweight .NET WASM framework for building C#-based UI components, offering direct DOM access, Handlebars templates, and a simple event model. It avoids the overhead of bigger frameworks, giving you typed wrappers for the DOM and full control in .NET.</Description>
+		<Company>Bryan Johnston</Company>
+		<PackageIcon>img.png</PackageIcon>
+		<PackageReadmeFile>README.md</PackageReadmeFile>
+		<RepositoryUrl></RepositoryUrl>
+		<PackageTags>
+			WebAssembly; WASM; .NET; C#; DOM; UI; Components; Interop; Handlebars; Minimal; Lightweight; JS Interop
+		</PackageTags>
+		<PackageLicenseFile>LICENSE.txt</PackageLicenseFile>
+		<IncludeSymbols>True</IncludeSymbols>
+		<SymbolPackageFormat>snupkg</SymbolPackageFormat>
+		<PackageRequireLicenseAcceptance>False</PackageRequireLicenseAcceptance>
+		<PackageId>$(AssemblyName)</PackageId>-->
+
+	</PropertyGroup>
+
+	<ItemGroup>
+		<None Include="..\img.png">
+			<Pack>True</Pack>
+			<PackagePath>\</PackagePath>
+		</None>
+		<None Include="..\README.md">
+		  <Pack>True</Pack>
+		  <PackagePath>\</PackagePath>
+		</None>
+		<None Include="..\LICENSE.txt">
+			<Pack>True</Pack>
+			<PackagePath>\</PackagePath>
+		</None>
+	</ItemGroup>
+
+	<ItemGroup>
+		<EmbeddedResource Include="jsvwasm\for_dotnet\document.js" />
+		<EmbeddedResource Include="jsvwasm\for_dotnet\element.js" />
+		<EmbeddedResource Include="jsvwasm\for_dotnet\js_function_pool.js" />
+		<EmbeddedResource Include="jsvwasm\for_dotnet\window.js" />
+		<EmbeddedResource Include="jsvwasm\for_dotnet\_for_dotnet.js" />
+		<EmbeddedResource Include="jsvwasm\jsvwasm.js" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<PackageReference Include="Handlebars.Net" Version="2.1.6" />
+		<PackageReference Include="HtmlSanitizer" Version="9.0.876" />
+		<PackageReference Include="Microsoft.AspNetCore.Html.Abstractions" Version="2.3.0" />
+		<PackageReference Include="Microsoft.AspNetCore.Mvc.ViewFeatures" Version="2.3.0" />
+	</ItemGroup>
+
+	<ItemGroup>
+	  <None Update="README.md">
+	    <Pack>True</Pack>
+	    <PackagePath>\</PackagePath>
+	  </None>
+	</ItemGroup>
+
+</Project>
