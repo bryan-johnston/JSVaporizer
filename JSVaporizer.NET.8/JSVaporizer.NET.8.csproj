@@ -7,26 +7,28 @@
 		<OutputType>Library</OutputType>
 		<IlcDisableReflection>false</IlcDisableReflection>
 
-		<!--<IsPackable>true</IsPackable>
+		<IsPackable>true</IsPackable>
 		
 		
-		<GeneratePackageOnBuild>True</GeneratePackageOnBuild>
-		<Title>JS Vaporizer</Title>
-		<Version>0.0.0.1</Version>
+		<GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+		<PackageTitle>JSVaporizer</PackageTitle>
+		<PackageOutputPath>$(SolutionDir)NuGetLocalFeed</PackageOutputPath>
+		<Version>0.0.1</Version>
 		<PackageProjectUrl></PackageProjectUrl>
 		<Description>JSVaporizer is a lightweight .NET WASM framework for building C#-based UI components, offering direct DOM access, Handlebars templates, and a simple event model. It avoids the overhead of bigger frameworks, giving you typed wrappers for the DOM and full control in .NET.</Description>
 		<Company>Bryan Johnston</Company>
 		<PackageIcon>img.png</PackageIcon>
 		<PackageReadmeFile>README.md</PackageReadmeFile>
-		<RepositoryUrl></RepositoryUrl>
+		<RepositoryUrl>https://github.com/bryan-johnston/JSVaporizer</RepositoryUrl>
 		<PackageTags>
 			WebAssembly; WASM; .NET; C#; DOM; UI; Components; Interop; Handlebars; Minimal; Lightweight; JS Interop
 		</PackageTags>
-		<PackageLicenseFile>LICENSE.txt</PackageLicenseFile>
+		<!--<PackageLicenseFile>LICENSE.txt</PackageLicenseFile>-->
+		<PackageLicenseExpression>MIT</PackageLicenseExpression>
 		<IncludeSymbols>True</IncludeSymbols>
 		<SymbolPackageFormat>snupkg</SymbolPackageFormat>
 		<PackageRequireLicenseAcceptance>False</PackageRequireLicenseAcceptance>
-		<PackageId>$(AssemblyName)</PackageId>-->
+		<PackageId>$(AssemblyName)</PackageId>
 
 	</PropertyGroup>
 

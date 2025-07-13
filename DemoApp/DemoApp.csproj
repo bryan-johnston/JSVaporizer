@@ -8,13 +8,11 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\DemoComponentLib\DemoComponentLib.csproj" />
+    <PackageReference Include="JSVaporizer.NET.8" Version="0.0.1" />
   </ItemGroup>
 
   <ItemGroup>
-    <Reference Include="JSVaporizer.NET.8">
-      <HintPath>..\JSVaporizer.NET.8\bin\Debug\net8.0\JSVaporizer.NET.8.dll</HintPath>
-    </Reference>
+    <ProjectReference Include="..\DemoComponentLib\DemoComponentLib.csproj" />
   </ItemGroup>
 
 </Project>
