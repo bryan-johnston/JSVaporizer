@@ -1,61 +1,119 @@
-﻿# This is ChatGPT o3-pro's summary
+﻿# JSVaporizer
 
-
-### 1  What functionality is JSVaporizer trying to provide?
-
-| Goal                                                                                                  | Practical value to a Blazor/‑Wasm application                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
-| ----------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Typed, ergonomic DOM API in C#** (`Window.cs`, `Document.cs`, `Element.cs`)                         | Let developers write `await Document.QuerySelector("#btn").AddEventListener("click", OnClick);` instead of juggling `IJSRuntime` and `IJSObjectReference` handles by hand.                                                                                                                                                                                                                                                                                                                                                                                            |
-| **Extremely low‑overhead JS ↔ .NET calls** (the *pool* and *cache* classes, plus the mirror JS files) | Every time ordinary Blazor calls JS it allocates a new JS proxy and does a JSON round‑trip. JSVaporizer instead:<br>• keeps a **global handle table** (`JsObjectCache`) so each JS object is marshalled once;<br>• reuses **delegate/function indices** stored in `JSFunctionPool` / `JSVGenericFunctionPool` so the same callback can be passed across the boundary thousands of times without re‑allocation;<br>• multiplexes *all* DOM events for a node through **one real JS listener** (`WasmJSVEventListenerPool`) and routes them to .NET via an integer key. |
-| **Safety helpers around dangerous APIs** (`HtmlSafety.cs`)                                            | When markup must be injected as HTML rather than `textContent`, the helper tries to strip scripts, event attributes, malformed SVG, etc.                                                                                                                                                                                                                                                                                                                                                                                                                              |
-| **Change‑tracking** (`DomMutationEvents.cs`)                                                          | A thin C# wrapper around `MutationObserver` so managed code can watch the DOM for structural changes.                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
-| **Bootstrap & wiring** (`jsvwasm.js`, `_for_dotnet.js`)                                               | Creates the import/export tables that connect the above layers when the page boots, allocates linear memory blocks for strings, and exposes a tiny runtime API to the other JS modules.                                                                                                                                                                                                                                                                                                                                                                               |
-
-Put together, **JSVaporizer aims to feel like *“Blazor + JavaScript interop, but as cheap as calling another C# method.”***
-It is **not** a full UI framework; think of it as an *accelerator* or *standard library* that your Blazor components can lean on when they need to touch the real browser DOM directly.
+**JSVaporizer** is an experimental runtime + toolchain that lets you build interactive web UIs entirely in C#.
+All DOM access, event handling, and templating logic execute in WebAssembly; the browser receives only a minimal, generic JavaScript “shim.”
+The goal is to **“vaporise”** most application‑specific JavaScript without sacrificing performance or flexibility.
 
 ---
 
-### 2  How far along is the implementation?
+## Key Objectives
 
-| Area                             | Evidence of completeness                                                                                                                                                                 | Remaining work / gaps                                                                                                                                      |
-| -------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Core handle & function pools** | Both sides (C# and JS) have handle tables, `Add` / `Get` / `Release` helpers, and a numeric‑id protocol. The JS side keeps arrays of `Function`, so the round‑trip plumbing is in place. | No reference counting or `WeakRef` fallback yet; leaks are likely under heavy attach/detach scenarios.                                                     |
-| **DOM surface**                  | `Window`, `Document`, and generic `Element` wrappers expose ≈ 15–20 common APIs (selectors, class‑list ops, basic style setters, event attach/detach).                                   | Wider DOM (SVG, CSS Typed OM, Shadow DOM, Clipboard, Fetch) is not wrapped.                                                                                |
-| **Event system**                 | `WasmJSVEventListenerPool` shows a fan‑out map keyed by `(elementId,eventType)`, proving the *one‑listener‑per‑type* design works.                                                       | Needs `DisposeAsync()` integration so that removing a component actually unregisters the listener on both sides, otherwise zombie listeners accumulate.    |
-| **MutationObserver wrapper**     | Basic `Start()` / `Stop()` abstractions are present.                                                                                                                                     | Filters (attribute‑only, subtree, etc.) not surfaced; no batching/throttling helpers.                                                                      |
-| **HtmlSafety**                   | Contains encode/decode helpers, regex‑based stripping for `<script>` and `on*=` attributes.                                                                                              | Regex approach misses many modern attack vectors (SVG, `data:` URLs, `<iframe srcdoc>`). An HTML‑parser‑based sanitizer (e.g., AngleSharp) would be safer. |
-| **Interop bootstrap**            | Custom boot script runs before `dotnet.runtime.js`. Imports/exports compile.                                                                                                             | .NET 8/9 now ships a *source‑generated* JS‑interop layer (`Microsoft.Interop.JavaScript`). Migrating would reduce maintenance.                             |
-| **Tests / CI**                   | No test project, no GitHub Actions pipeline.                                                                                                                                             | Needed to catch leaks, regressions, and cross‑browser quirks early.                                                                                        |
-| **Docs & samples**               | Absent.                                                                                                                                                                                  | At minimum: live CodePen / Blazor‑Wasm sample that shows 10 000 button clicks/sec with near‑zero allocations.                                              |
-
-**Rough completion estimate (qualitative):**
-
-* **Core mechanism (handle tables, event pooling)** – **80 % complete** – works but needs disposal & thread‑safety polish.
-* **Breadth of DOM coverage** – **30 %** – only the most common APIs wrapped.
-* **Security hardening** – **40 %** – basic escapes exist; comprehensive sanitisation and CSP guidance are still pending.
-* **Tooling / DX (docs, tests, CI)** – **10 %** – skeleton code only.
-
-Overall the project has **crossed the proof‑of‑concept line**: the hard part—efficient cross‑boundary plumbing—functions.
-What remains is the “productisation” work: defensive coding, feature breadth, test coverage, and documentation.
+| Objective                           | Approach                                                                                                |
+| ----------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| **Minimise handwritten JavaScript** | C# wrappers (`Window`, `Document`, `Element`, …) mirror the DOM.                                        |
+| **Fast WASM ↔ JS inter‑op**         | Function & object **pools**: delegates and handles are stored once and referenced by small integer IDs. |
+| **Light runtime payload**           | Ship only a handful of thin shims (`window.js`, `element.js`, `jsvwasm.js`, …).                         |
+| **Security by default**             | Sanitize HTML/Handlebars templates on the managed side (`HtmlSafety`, `HandlebarsSafety`).              |
+| **Declarative components**          | Convert templates to fluent builder APIs (`JSVComponent`, `JSVCompBuilder`, `JSVTransformer`).          |
 
 ---
 
-### 3  Next concrete milestones
+## How It Works – 30‑second Tour
 
-| Milestone                                                                                                                                           | Why it matters                                                                          |
-| --------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
-| **Leak‑hunt & disposal pass** – integrate `IDisposable`/`IAsyncDisposable` on all wrapper objects and flush JS listeners when a component unmounts. | Prevents unbounded memory growth and dangling DOM nodes in long‑lived single‑page apps. |
-| **Enable nullable reference types + analyzers**                                                                                                     | Surfaces dozens of silent `null` paths; easy win for correctness.                       |
-| **Security review of `HtmlSafety`** – replace regexes with parse‑tree whitelist; write test‑vectors covering SVG & MathML.                          | Essential before encouraging third parties to build on the library.                     |
-| **BenchmarkDotNet suite** – compare allocations and wall‑time vs. plain `IJSRuntime` calls. Publish graphs in README.                               | Quantifies the “vaporizer” claim and prevents future regressions.                       |
-| **Public sample & docs**                                                                                                                            | Lowers adoption barrier, attracts contributors who spot edge‑cases you missed.          |
+```text
+C# (WebAssembly)                       JavaScript (browser)
+┌────────────────────┐   thin shims   ┌────────────────────┐
+│ Element / Document │  ───────────▶  │ element.js / ...   │
+│ Window wrappers    │  ◀───────────  │ js_function_pool.js│
+└────────────────────┘   int handles  └────────────────────┘
+        ▲                                    ▲
+        │ typed DOM API                      │ real DOM
+        │                                     │
+   Component builders                   Mutation events
+```
 
-Once those five items are green the project will be in **“early‑beta but production‑trial‑ready”** territory rather than “fun hack that works on my machine.”
+1. **Build‑time**
+
+   * Templates are transformed into C# component builders.
+   * The project is compiled to WebAssembly; a small JS bundle is copied to *wwwroot*.
+
+2. **Runtime**
+
+   * JavaScript shims initialise object/function pools and create the first handles.
+   * Managed wrappers map those handles to strongly‑typed C# objects.
+   * DOM changes and events cross the boundary via pool IDs rather than JSON blobs.
 
 ---
 
-#### Bottom line
+## Repository Layout (selected files)
 
-*JSVaporizer already delivers the core promise—cheap, pooled JS interop—but still needs
-robust resource management, security hardening, broader API coverage, and end‑user polish before it can be recommended as a drop‑in standard library for Blazor‑Wasm apps.*
+| Area                   | Representative files                                                    | Purpose                                                             |
+| ---------------------- | ----------------------------------------------------------------------- | ------------------------------------------------------------------- |
+| Inter‑op core          | `JSFunctionPool.cs`, `WasmJSVGenericFuncPool.cs`, `js_function_pool.js` | Store delegates/JS functions once and trade integer IDs.            |
+| DOM façade             | `Window.cs`, `Document.cs`, `Element.cs` (+ matching JS files)          | Present a .NET‑friendly surface that mirrors the browser DOM.       |
+| Event routing          | `WasmJSVEventListenerPool.cs`, `DomMutationEvents.cs`                   | Multiplex many DOM events through a jump table into managed code.   |
+| Components & templates | `JSVComponent.cs`, `JSVCompBuilder.cs`, `JSVTransformer.cs`             | Turn Razor‑/Handlebars‑like markup into fluent, type‑safe builders. |
+| Security helpers       | `HtmlSafety.cs`, `HandlebarsSafety.cs`                                  | Encode or strip unsafe markup to reduce XSS risk.                   |
+| Utilities              | `JsObjectCache.cs`, `Convenience.cs`, `Invokers.cs`, `Exports.cs`       | Handle object identity, convenience wrappers, JS ↔ C# exports.      |
+
+---
+
+## Current Status
+
+* **Proof of concept** – the core plumbing is present, but the API may change without notice.
+* **Browser support** – verified in Chromium‑based browsers with WebAssembly enabled.
+* **Performance** – early micro‑benchmarks show inter‑op latency well below JSON‑based approaches, though leak‑prevention and batching need work.
+* **Documentation** – this README is the primary entry point; inline XML docs are incomplete.
+
+---
+
+## Building & Running
+
+1. Build the `JSVaporizer.NET.8` project first.
+1. Then build `DemoComponentLib` and `DemoApp` if you need to.
+1. Run `DemoApp` if you'd like. 
+
+---
+
+## Roadmap
+
+* **Component library** – ship a basic set of form controls and layout helpers.
+* **Hot‑reload** – investigate Roslyn source generators + WASM dynamic linking.
+* **Broader browser testing** – validate on Firefox and Safari.
+* **WebGPU/WebGL wrappers** – reuse the inter‑op pools for graphics APIs.
+* **Comprehensive docs & samples** – tutorials, API reference, real‑world demos.
+
+---
+
+## Immediate Next Steps (high‑severity issues)
+
+| Area                      | Issue                                                                              | Why It Matters                                                             | Suggested Fix                                                                                                     |
+| ------------------------- | ---------------------------------------------------------------------------------- | -------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| **Function Pool**         | Delegates are pinned indefinitely; there is no disposal path.                      | Long‑running sessions leak managed memory and JS callbacks.                | Add explicit `Unregister(int id)` and bulk shutdown method; track outstanding references.                         |
+| **Element & DOM Handles** | `Element` holds an `int handle` that is never released from `JsObjectCache`.       | DOM nodes accumulate in JS even after C# objects are GC‑ed → JS heap leak. | Implement `IDisposable` / `Release()` pattern on `Element` and call it from component teardown.                   |
+| **Event Listeners**       | No API to remove all listeners for an element when it unmounts.                    | Orphan listeners keep components alive and trigger unexpected callbacks.   | Provide `RemoveAllListeners(int elementHandle)` in `WasmJSVEventListenerPool` and call it from `IDisposable`.     |
+| **Object Cache**          | Reference counting is only incremented; several `// TODO: DecRef` comments remain. | Handles never reach zero → perpetual growth on both sides of the bridge.   | Audit every `IncRef`; pair each with a matching `DecRef` during disposal. Add unit tests to verify stable counts. |
+| **Security Tests**        | Sanitizers lack a regression suite for common XSS vectors.                         | Silent sanitizer regressions are dangerous in production apps.             | Add unit tests covering `<img onerror>`, SVG payloads, CSS `url(javascript:...)`, nested templates, etc.          |
+
+Addressing these items first will prevent memory leaks, dangling event handlers, and security regressions—laying a stable foundation for the broader roadmap.
+
+---
+
+## Contributing
+
+Issues, feature requests, and pull requests are welcome!
+For large‑scale changes, please open a discussion or issue first so we can agree on direction.
+
+---
+
+## License
+
+### MIT License
+
+Copyright (c) 2025 Bryan Johnston
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
