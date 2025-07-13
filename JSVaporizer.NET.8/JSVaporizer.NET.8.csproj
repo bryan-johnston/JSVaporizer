@@ -28,7 +28,7 @@
 		<IncludeSymbols>True</IncludeSymbols>
 		<SymbolPackageFormat>snupkg</SymbolPackageFormat>
 		<PackageRequireLicenseAcceptance>False</PackageRequireLicenseAcceptance>
-		<PackageId>$(AssemblyName)</PackageId>
+		<PackageId>JSVaporizer8</PackageId>
 
 	</PropertyGroup>
 

@@ -8,7 +8,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="JSVaporizer.NET.8" Version="0.0.1" />
+    <PackageReference Include="JSVaporizer8" Version="0.0.1" />
   </ItemGroup>
 
   <ItemGroup>
