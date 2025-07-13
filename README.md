@@ -1,5 +1,7 @@
 ﻿# JSVaporizer
 
+***An instance of `DemoApp` is currently deployed at https://jsvaporizer-poc.azurewebsites.net/.***
+
 **JSVaporizer** is an experimental runtime + toolchain that lets you build interactive web UIs entirely in C#.
 All DOM access, event handling, and templating logic execute in WebAssembly; the browser receives only a minimal, generic JavaScript “shim.”
 The goal is to **“vaporise”** most application‑specific JavaScript without sacrificing performance or flexibility.
