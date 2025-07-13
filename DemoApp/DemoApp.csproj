@@ -15,4 +15,8 @@
     <ProjectReference Include="..\DemoComponentLib\DemoComponentLib.csproj" />
   </ItemGroup>
 
+	<ItemGroup>
+		<TrimmerRootAssembly Include="DemoComponentLib" RootMode="library" />
+	</ItemGroup>
+	
 </Project>

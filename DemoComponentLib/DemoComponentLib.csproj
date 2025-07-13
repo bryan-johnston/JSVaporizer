@@ -13,6 +13,19 @@
     <PackageReference Include="Microsoft.AspNetCore.Mvc.ViewFeatures" Version="2.3.0" />
   </ItemGroup>
 
+	<PropertyGroup>
+		<!-- already have TargetFramework etc. -->
+		<RuntimeIdentifier>browser-wasm</RuntimeIdentifier>
+		<!-- keeps WASM tool‑chain -->
+		<IsPublishable>false</IsPublishable>
+		<!-- stop VS from calling Publish/GetTargetPath -->
+		<IsTrimmable>false</IsTrimmable>
+		<!-- so ILLink ignores it -->
+	</PropertyGroup>
 
-
+	<PropertyGroup>
+		<!-- Only applies to Release builds -->
+		<PublishTrimmed>false</PublishTrimmed>
+	</PropertyGroup>
+	
 </Project>
